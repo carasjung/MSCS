@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Emotion Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+        }
+        input[type="file"] {
+            margin: 20px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .emotion-result {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .confidence {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        .probabilities {
+            margin-top: 20px;
+        }
+        .prob-bar {
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .prob-fill {
+            height: 25px;
+            background-color: #007bff;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            color: white;
+            font-weight: bold;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Audio Emotion Detection</h1>
+        
+        <div class="upload-area">
+            <h3>Upload an audio file to detect emotion</h3>
+            <p>Supported formats: WAV, MP3, M4A</p>
+            <input type="file" id="audioFile" accept="audio/*">
+            <br>
+            <button onclick="predictEmotion()" id="predictBtn">Analyze Emotion</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Analyzing audio... Please wait.
+        </div>
+        
+        <div id="result" class="result">
+            <div id="emotionResult" class="emotion-result"></div>
+            <div id="confidenceResult" class="confidence"></div>
+            <div id="probabilitiesResult" class="probabilities"></div>
+        </div>
+    </div>
+
+    <script>
+        async function predictEmotion() {
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select an audio file first!');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('audio', file);
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('predictBtn').disabled = true;
+            document.getElementById('result').style.display = 'none';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('predictBtn').disabled = false;
+                
+                // Show result
+                const resultDiv = document.getElementById('result');
+                
+                if (result.success) {
+                    resultDiv.className = 'result success';
+                    document.getElementById('emotionResult').innerHTML = 
+                        `Detected Emotion: <span style="color: #007bff;">${result.emotion.toUpperCase()}</span>`;
+                    document.getElementById('confidenceResult').innerHTML = 
+                        `Confidence: ${(result.confidence * 100).toFixed(1)}%`;
+                    
+                    // Show probabilities
+                    let probHtml = '<h4>All Emotion Probabilities:</h4>';
+                    const sortedProbs = Object.entries(result.probabilities)
+                        .sort(([,a], [,b]) => b - a);
+                    
+                    sortedProbs.forEach(([emotion, prob]) => {
+                        const percentage = (prob * 100).toFixed(1);
+                        probHtml += `
+                            <div class="prob-bar">
+                                <div class="prob-fill" style="width: ${percentage}%">
+                                    ${emotion}: ${percentage}%
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    document.getElementById('probabilitiesResult').innerHTML = probHtml;
+                } else {
+                    resultDiv.className = 'result error';
+                    document.getElementById('emotionResult').innerHTML = 'Error: ' + result.error;
+                    document.getElementById('confidenceResult').innerHTML = '';
+                    document.getElementById('probabilitiesResult').innerHTML = '';
+                }
+                
+                resultDiv.style.display = 'block';
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('predictBtn').disabled = false;
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.className = 'result error';
+                document.getElementById('emotionResult').innerHTML = 'Error: ' + error.message;
+                document.getElementById('confidenceResult').innerHTML = '';
+                document.getElementById('probabilitiesResult').innerHTML = '';
+                resultDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

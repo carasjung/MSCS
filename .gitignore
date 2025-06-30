@@ -1,0 +1,8 @@
+# Files over 100MB (block them)
+Introduction to Deep Learning/audio-emotion-detector/ravdess-emotional-speech-audio.zip
+Introduction to Machine Learning /Skincare Recommender/clean_data/skincare_reviews_clean.csv
+
+# Optionally exclude the over-50MB files
+Introduction to Deep Learning/audio-emotion-detector/emotion_detection_model.h5
+Introduction to Machine Learning /Skincare Recommender/sephora_data/reviews_0-250_masked.csv
+
